@@ -15,17 +15,17 @@ if errorlevel 1 (
 )
 if "%GPU%"=="1" (
   py -m pip uninstall -y onnxruntime onnxruntime-gpu
-  py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 pyinstaller rembg onnxruntime-directml
+  py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 curl-cffi pyinstaller rembg onnxruntime-directml
 ) else (
   py -m pip uninstall -y onnxruntime-directml
-  py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 pyinstaller "rembg[cpu]"
+  py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 curl-cffi pyinstaller "rembg[cpu]"
 )
 if errorlevel 1 goto fail
 py convert_icon.py
 set ICONOPT=
 if exist app.ico set ICONOPT=--icon app.ico --add-data "app.ico;."
 py -m PyInstaller --onedir --windowed --noconfirm --name %NAME% %ICONOPT% ^
-  --collect-all customtkinter --collect-all yt_dlp --collect-all imageio_ffmpeg --collect-all tkinterdnd2 ^
+  --collect-all customtkinter --collect-all yt_dlp --collect-all imageio_ffmpeg --collect-all tkinterdnd2 --collect-all curl_cffi ^
   --collect-all rembg --collect-all onnxruntime --collect-all pymatting --collect-all numba ^
   --collect-all llvmlite --collect-all skimage --collect-all pooch ^
   --add-data "browser_extension;browser_extension" ^

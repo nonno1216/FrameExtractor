@@ -22,6 +22,7 @@ import cv2
 import numpy as np
 
 import engine as E
+import missav as MISSAV  # MissAV 専用（yt-dlp 非対応のため直接 HLS を取得する）
 
 try:
     import yt_dlp
@@ -1188,7 +1189,13 @@ class App:
             dest = filedialog.askdirectory(title="動画の保存先フォルダを選択")
             if not dest:
                 return
-        if not YT_OK:
+        if MISSAV.is_missav_url(url):
+            if not MISSAV.CFFI_OK:
+                messagebox.showerror("取得できません",
+                                     "curl-cffi が入っていません。\nコマンドプロンプトで\n  pip install curl-cffi\nを実行してください。\n"
+                                     "（exe版は build.bat で作り直してください）")
+                return
+        elif not YT_OK:
             messagebox.showerror("取得できません",
                                  "yt-dlp が入っていません。\nコマンドプロンプトで\n  pip install yt-dlp\nを実行してください。\n"
                                  "（exe版は build.bat で作り直してください）")
@@ -1229,6 +1236,24 @@ class App:
                 self.q.put(("dlmsg", "仕上げ中…（映像と音声を結合）"))
 
         t0 = time.time()
+        first_err = None
+        # MissAV は yt-dlp 非対応のため専用処理。失敗したら残りの候補を通常の取得で試す
+        missavs = [u for u in urls if MISSAV.is_missav_url(u)]
+        if missavs:
+            try:
+                path = self._run_missav(missavs, height, dest, cookie, t0)
+                self.q.put(("dl_done", path))
+                return
+            except MISSAV.Cancelled:
+                self.q.put(("dl_cancel",))
+                return
+            except Exception as e:
+                first_err = e
+                urls = [u for u in urls if not MISSAV.is_missav_url(u)]
+                if not urls:
+                    msg = re.sub(r"\x1b\[[0-9;]*m", "", str(first_err)).strip()
+                    self.q.put(("dl_error", msg[:400]))
+                    return
         audio = bool(E.FFMPEG)
         opts = {
             "format": build_format(height, audio),
@@ -1245,7 +1270,6 @@ class App:
             opts["ffmpeg_location"] = E.FFMPEG
         if referer:
             opts["http_headers"] = {"Referer": referer}  # 動画ファイルを直接取るとき、元のページからと伝える
-        first_err = None
         for i, url in enumerate(urls):  # 右クリックからは候補が複数届く。保存できるまで順に試す
             if i:
                 self.q.put(("dlmsg", f"別の方法で取得を試しています…（{i + 1}/{len(urls)}）"))
@@ -1260,6 +1284,27 @@ class App:
                 first_err = first_err or e
         msg = re.sub(r"\x1b\[[0-9;]*m", "", str(first_err)).strip()
         self.q.put(("dl_error", msg[:400]))
+
+    def _run_missav(self, urls, height, dest, cookie, t0):
+        """MissAV の候補を順に試して保存先パスを返す。"""
+        def progress(downloaded, total):
+            el = max(0.1, time.time() - t0)
+            self.q.put(("dl", downloaded, total, downloaded / el))
+
+        first_err = None
+        for i, url in enumerate(urls):
+            if i:
+                self.q.put(("dlmsg", f"別の方法で取得を試しています…（{i + 1}/{len(urls)}）"))
+            try:
+                return MISSAV.download(
+                    url, dest, max_height=height, progress_cb=progress,
+                    cancel_cb=lambda: self.cancel, msg_cb=lambda m: self.q.put(("dlmsg", m)),
+                    ffmpeg=E.FFMPEG, cookie=cookie)
+            except MISSAV.Cancelled:
+                raise
+            except Exception as e:
+                first_err = first_err or e
+        raise first_err
 
     def _dl_one(self, url, opts, dest, t0):
         with yt_dlp.YoutubeDL(opts) as ydl:

@@ -8,12 +8,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 pyinstaller
+py -m pip install --upgrade opencv-python-headless pillow customtkinter yt-dlp imageio-ffmpeg tkinterdnd2 curl-cffi pyinstaller
 if errorlevel 1 goto fail
 py convert_icon.py
 set ICONOPT=
 if exist app.ico set ICONOPT=--icon app.ico --add-data "app.ico;."
-py -m PyInstaller --onefile --windowed --noconfirm --collect-all customtkinter --collect-all yt_dlp --collect-all imageio_ffmpeg --collect-all tkinterdnd2 --add-data "browser_extension;browser_extension" --name FrameExtractor %ICONOPT% frame_extractor.py
+py -m PyInstaller --onefile --windowed --noconfirm --collect-all customtkinter --collect-all yt_dlp --collect-all imageio_ffmpeg --collect-all tkinterdnd2 --collect-all curl_cffi --add-data "browser_extension;browser_extension" --name FrameExtractor %ICONOPT% frame_extractor.py
 if errorlevel 1 goto fail
 echo.
 echo Done. Your exe is here: dist\FrameExtractor.exe

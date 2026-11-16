@@ -23,5 +23,12 @@ function isVideoUrl(u) {
   if (on("dailymotion.com")) return /\/video\//.test(p);
   if (on("streamable.com")) return /^\/([eo]\/)?[a-z0-9]+$/i.test(p);
   if (on("reddit.com")) return /\/comments\//.test(p);
+  if (/^missav\d*\./.test(h)) {
+    // /dm13/ja/fc2-ppv-3145033 や /ja/xxxx のような動画ページ。一覧ページは除く
+    const seg = p.split("/").filter(Boolean);
+    const last = seg[seg.length - 1] || "";
+    const LIST = ["search", "new", "genres", "actresses", "makers", "series", "tags", "collection", "login", "register"];
+    return seg.length >= 2 && seg.length <= 3 && last.length > 2 && !LIST.includes(last);
+  }
   return false;
 }
