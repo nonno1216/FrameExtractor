@@ -1,0 +1,12 @@
+# PyInstaller のビルド成果物
+build/
+dist/
+*.exe
+
+# Python のキャッシュ
+__pycache__/
+*.pyc
+
+# 仮想環境
+venv/
+.venv/
